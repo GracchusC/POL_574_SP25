@@ -28,7 +28,7 @@ pacman::p_load(conText,
                text2vec,
                ggplot2)
 
-## 1.1) Prerequisites
+## 1.1) Prerequisites ----------------------------------------------------------
 
 ## What do we need?
 ## 1) corpus of documents
@@ -55,7 +55,7 @@ docvars <- docvars(corpus) %>%
 docvars(corpus) <- docvars
 
 
-## 1.2) Pre-processing
+## 1.2) Pre-processing ---------------------------------------------------------
 
 ## tokenize corpus 
 ## remove unnecessary (i.e. semantically uninformative) elements
@@ -88,7 +88,7 @@ toks_nostop_feats <- tokens_select(toks_nostop,
                                    padding = TRUE)
 
 
-## 1.3) Generating a la carte embeddings
+## 1.3) Generating a la carte embeddings ---------------------------------------
 
 
 ## suppose we are interested in differences of the term "immigration" across parties
@@ -124,7 +124,7 @@ head(immig_dem)
 ## EACH occurrence of "immigration"
 
 
-## 1.4) summarizing local embeddings across groups
+## 1.4) summarizing local embeddings across groups -----------------------------
 
 ## We now have an ALC embedding for each instance of “immigration” in our corpus
 ## To get a single corpus-wide ALC embedding for “immigration”, 
@@ -143,8 +143,53 @@ dim(immig_wv_party)
 immig_wv_party
 
 
+## 1.4b ) Substantive differences across groups --------------------------------
 
-## 1.5) Embedding Regression 
+immig_nns <- nns(immig_wv_party, 
+                 pre_trained = glove, 
+                 N = 5, 
+                 candidates = immig_wv_party@features, 
+                 as_list = TRUE)
+
+## check out results for party
+immig_nns[["R"]]
+immig_nns[["D"]]
+
+
+## Cosine similarity
+## compute the cosine similarity between each party's embedding and a specific set of features
+cos_sim(immig_wv_party, 
+        pre_trained = glove, 
+        features = c('reform', 'enforcement'), 
+        as_list = FALSE)
+
+
+## Cosine similarity ratio
+
+## we limit candidates to features in our corpus
+feats <- featnames(dfm(immig_toks))
+
+## compute ratio
+set.seed(2021L)
+immig_nns_ratio <- get_nns_ratio(x = immig_toks, 
+                                 N = 10,
+                                 groups = docvars(immig_toks, 'party'),
+                                 numerator = "R",
+                                 candidates = feats,
+                                 pre_trained = glove,
+                                 transform = TRUE,
+                                 transform_matrix = khodak,
+                                 bootstrap = TRUE,
+                                 num_bootstraps = 100,
+                                 permute = TRUE,
+                                 num_permutations = 10,
+                                 verbose = FALSE)
+
+plot_nns_ratio(x = immig_nns_ratio, alpha = 0.01, horizontal = F)
+
+
+
+## 1.5) Embedding Regression ---------------------------------------------------
 
 ## conText() syntax similar to lm()
 ## data must be quanteda tokens object with covariates stored as docvars 
